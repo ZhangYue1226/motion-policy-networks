@@ -163,6 +163,7 @@ RUN ln -fs /usr/share/zoneinfo/America/Los_Angeles /etc/localtime \
   && rm -rf /var/lib/apt \
   && sh -c 'echo "deb http://packages.ros.org/ros/ubuntu bionic main" > /etc/apt/sources.list.d/ros-latest.list' \
   && curl -s https://raw.githubusercontent.com/ros/rosdistro/master/ros.asc | apt-key add - \
+  && apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys C1CF6E31E6BADE8868B172B4F42ED6FBAB17C654
   && apt update && apt install -y --no-install-recommends \
     ros-melodic-desktop-full \
     python-rosdep \
@@ -182,6 +183,44 @@ RUN ln -fs /usr/share/zoneinfo/America/Los_Angeles /etc/localtime \
   && echo "source /opt/ros/melodic/setup.bash" >> ~/.bashrc \
   && rosdep init && rosdep update \
   && python3 -m pip install rospkg netifaces
+
+
+##修改为：
+# Section 3. Install ROS dependencies for the interactive tutorial
+RUN ln -fs /usr/share/zoneinfo/America/Los_Angeles /etc/localtime \
+  && echo "America/Los_Angeles" > /etc/timezone \
+  && apt install -y --no-install-recommends \
+  curl \
+  && apt-get clean \
+  && rm -rf /var/lib/apt \
+  && sh -c 'echo "deb http://packages.ros.org/ros/ubuntu bionic main" > /etc/apt/sources.list.d/ros-latest.list' \
+  #下面这句为了获得一个key。key直接从"apt-key"那句得到即可。
+  #&& curl -s https://raw.githubusercontent.com/ros/rosdistro/master/ros.asc | apt-key add - \
+  && apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys C1CF6E31E6BADE8868B172B4F42ED6FBAB17C654
+  
+  && apt update && gnupg && apt install -y --no-install-recommends \
+    ros-melodic-desktop-full \
+    python-rosdep \
+    python-rosinstall \
+    python-rosinstall-generator \
+    python-wstool \
+    ros-melodic-catkin \
+    python-catkin-tools \
+    ros-melodic-moveit \
+    ros-melodic-moveit-python \
+    ros-melodic-franka-ros \
+    ros-melodic-tf2-ros \
+    python3-rospkg-modules \
+    python3-catkin-pkg-modules \
+  && apt-get clean \
+  && rm -rf /var/lib/apt \
+  && echo "source /opt/ros/melodic/setup.bash" >> ~/.bashrc \
+  #以下换成校园网之外的网络
+  && rosdep init && rosdep update \
+  && python3 -m pip install rospkg netifaces
+
+
+
 
 ENV ROS_HOSTNAME=localhost
 ENV ROS_MASTER_URI=http://localhost:11311
