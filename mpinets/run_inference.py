@@ -52,7 +52,7 @@ END_EFFECTOR_FRAME = "right_gripper"
 NUM_ROBOT_POINTS = 2048
 NUM_OBSTACLE_POINTS = 4096
 NUM_TARGET_POINTS = 128
-MAX_ROLLOUT_LENGTH = 150
+MAX_ROLLOUT_LENGTH = 150  # 这些数字根据什么定的？
 
 
 def make_point_cloud_from_problem(
@@ -75,6 +75,7 @@ def make_point_cloud_from_problem(
         ),
         dim=0,
     )
+    # concat: 零张量，1张量等
     xyz[:NUM_ROBOT_POINTS, :3] = robot_points.float()
     random_obstacle_indices = np.random.choice(
         len(obstacle_points), size=NUM_OBSTACLE_POINTS, replace=False
@@ -89,7 +90,7 @@ def make_point_cloud_from_problem(
     ] = target_points.float()
     return xyz
 
-
+# 从原始食物产生点云
 def make_point_cloud_from_primitives(
     q0: torch.Tensor,
     target: SE3,
@@ -99,10 +100,11 @@ def make_point_cloud_from_primitives(
     """
     Creates the pointcloud of the scene, including the target and the robot. When performing
     a rollout, the robot points will be replaced based on the model's prediction
+    创建场景的点云，包括目标和机器人。在执行滚出（展示）时，机器人的点将根据模型的预测进行替换。
 
-    :param q0 torch.Tensor: The starting configuration (dimensions [1 x 7])
-    :param target SE3: The target pose in the `right_gripper` frame
-    :param obstacles List[Union[Cuboid, Cylinder]]: The obstacles in the scene
+    :param q0 torch.Tensor: The starting configuration (dimensions [1 x 7]) q0：开始的构型 1*7
+    :param target SE3: The target pose in the `right_gripper` frame  目标姿态
+    :param obstacles List[Union[Cuboid, Cylinder]]: The obstacles in the scene  场景中的障碍物
     :param fk_sampler FrankaSampler: A sampler that produces points on the robot's surface
     :rtype torch.Tensor: The pointcloud (dimensions
                          [1 x NUM_ROBOT_POINTS + NUM_OBSTACLE_POINTS + NUM_TARGET_POINTS x 4])
@@ -144,7 +146,7 @@ def rollout_until_success(
     """
     Rolls out the policy until the success criteria are met. The criteria are that the
     end effector is within 1cm and 15 degrees of the target. Gives up after 150 prediction
-    steps.
+    steps.展开策略，直到满足成功标准。标准是末端执行器与目标的距离在1cm和15度以内。在150个预测步骤后放弃。
 
     :param mdl MotionPolicyNetwork: The policy
     :param q0 np.ndarray: The starting configuration (dimension [7])
@@ -196,6 +198,7 @@ def convert_primitive_problems_to_depth(problems: ProblemSet):
     Converts the planning problems in place from primitive-based to point-cloud-based.
     This used PyBullet to create the scene and sample a depth image. That depth image is
     then turned into a point cloud with ray casting.
+    将现有的规划问题从基于原语的问题转换为基于点云的问题。这使用PyBullet来创建场景并对深度图像进行采样。然后用光线投射将深度图像转换为点云。
 
     :param problems ProblemSet: The list of problems to convert
     :raises NotImplementedError: Raises an error if the environment type is not supported
