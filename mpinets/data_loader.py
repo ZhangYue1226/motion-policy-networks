@@ -64,6 +64,7 @@ class PointCloudBase(Dataset):
     Note that only the relevant subdirectory is required, i.e. when creating a
     dataset for training, this class will not check for (and will not use) the val/
     and test/ subdirectories.
+    这个基类永远不应该直接使用，但是它处理文件系统的管理和基本索引。
     """
 
     def __init__(
@@ -78,10 +79,10 @@ class PointCloudBase(Dataset):
     ):
         """
         :param directory Path: The path to the root of the data directory
-        :param num_robot_points int: The number of points to sample from the robot
-        :param num_obstacle_points int: The number of points to sample from the obstacles
-        :param num_target_points int: The number of points to sample from the target
-                                      robot end effector
+        :param num_robot_points int: The number of points to sample from the robot  从机器人中取样的点数
+        :param num_obstacle_points int: The number of points to sample from the obstacles  从障碍物中取样的点数
+        :param num_target_points int: The number of points to sample from the target  
+                                      robot end effector  从机器人末端执行器目标中取样的点数
         :param dataset_type DatasetType: What type of dataset this is
         :param random_scale float: The standard deviation of the random normal
                                    noise to apply to the joints during training.
@@ -125,14 +126,14 @@ class PointCloudBase(Dataset):
     @property
     def num_trajectories(self):
         """
-        Returns the total number of trajectories in the dataset
+        Returns the total number of trajectories in the dataset  返回数据集中轨迹的总数
         """
         return self._num_trajectories
 
     @staticmethod
     def normalize(configuration_tensor: torch.Tensor):
         """
-        Normalizes the joints between -1 and 1 according the the joint limits
+        Normalizes the joints between -1 and 1 according the the joint limits  根据关节极限，将-1到1之间的关节归一化
 
         :param configuration_tensor torch.Tensor: The input tensor. Has dim [7]
         """
@@ -144,6 +145,9 @@ class PointCloudBase(Dataset):
         normalizing all configurations and constructing the pointcloud.
         If a training dataset, applies some randomness to joints (before
         sampling the pointcloud).
+        加载所有相关数据并将其放入字典中。
+        这包括归一化所有配置并且构造点云。
+        如果是训练数据集，对关节应用一些随机性(在对点云采样之前)。
 
         :param trajectory_idx int: The index of the trajectory in the hdf5 file
         :param timestep int: The timestep within that trajectory
@@ -172,7 +176,7 @@ class PointCloudBase(Dataset):
                 # Ensure that after adding random noise, the joint angles are still within the joint limits
                 limits = torch.as_tensor(FrankaRealRobot.JOINT_LIMITS).float()
 
-                # Clamp to joint limits
+                # Clamp to joint limits  夹紧关节极限
                 randomized = torch.minimum(
                     torch.maximum(randomized, limits[:, 0]), limits[:, 1]
                 )
@@ -287,6 +291,11 @@ class PointCloudTrajectoryDataset(PointCloudBase):
     this is used to produce an entire rollout and check for success. When doing
     validation, we care more about success than we care about matching the
     expert's behavior (which is a key difference from training).
+    此数据集专门用于验证。
+    数据集中的每个元素都表示一个轨迹起点和场景。
+    没有监督，因为这是用来产生整个推出和检查是否成功。
+    在进行验证时，我们更关心的是成功，而不是匹配专家的行为(这是与训练的关键区别)。
+
     """
 
     def __init__(
@@ -330,6 +339,7 @@ class PointCloudTrajectoryDataset(PointCloudBase):
         """
         Required by Pytorch. Queries for data at a particular index. Note that
         in this dataset, the index always corresponds to the trajectory index.
+        在这个数据集中，索引总是对应于轨迹索引。
 
         :param idx int: The index
         :rtype Dict[str, torch.Tensor]: Returns a dictionary that can be assembled
