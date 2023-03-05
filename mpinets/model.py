@@ -43,7 +43,11 @@ class MotionPolicyNetwork(pl.LightningModule):
         Constructs the model
         """
         super().__init__()
-        self.point_cloud_encoder = MPiNetsPointNet() # 点云编码器使用MPiNetsPointNet
+        
+        # 点云编码器使用MPiNetsPointNet
+        self.point_cloud_encoder = MPiNetsPointNet() 
+        
+        # 特征编码器（即：robot configuration编码器）7-->64维
         self.feature_encoder = nn.Sequential(
             nn.Linear(7, 32),
             nn.LeakyReLU(),
@@ -54,7 +58,9 @@ class MotionPolicyNetwork(pl.LightningModule):
             nn.Linear(128, 128),
             nn.LeakyReLU(),
             nn.Linear(128, 64),
-        ) # 特征编码器（即：robot configuration编码器）7-->64维
+        ) 
+        
+        #解码器：2048--> 7维
         self.decoder = nn.Sequential(
             nn.Linear(2048 + 64, 512),
             nn.LeakyReLU(),
@@ -63,7 +69,7 @@ class MotionPolicyNetwork(pl.LightningModule):
             nn.Linear(256, 128),
             nn.LeakyReLU(),
             nn.Linear(128, 7),
-        )  #解码器：2048--> 7维
+        ) 
 
     def configure_optimizers(self):
         """
