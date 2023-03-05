@@ -574,19 +574,19 @@ def construct_mixed_point_cloud(
     """
     Creates a random point cloud from a collection of obstacles. The points in
     the point cloud should be fairly(-ish) distributed amongst the obstacles based
-    on their surface area.
+    on their surface area.从障碍物集合中创建一个随机点云。点云中的点应该根据障碍物的表面积公平地分布在障碍物之间。
 
     :param obstacles Sequence[Union[Sphere, Cuboid, Cylinder]]: The obstacles in the scene
     :param num_points int: The total number of points in the samples scene (not
                            the number of points per obstacle)
     :rtype np.ndarray: Has dim [N, 3] where N is num_points
     """
-    point_set = []
-    total_obstacles = len(obstacles)
+    point_set = []   # 是输入的文件吗？哪个文件？
+    total_obstacles = len(obstacles)   #obstacles变量在哪里定义的？
     if total_obstacles == 0:
         return np.array([[]])
 
-    # Allocate points based on obstacle surface area for even sampling
+    # Allocate points based on obstacle surface area for even sampling  根据障碍物表面面积分配点数，以便进行均匀采样
     surface_areas = np.array([o.surface_area for o in obstacles])
     total_area = np.sum(surface_areas)
     proportions = (surface_areas / total_area).tolist()
@@ -594,7 +594,8 @@ def construct_mixed_point_cloud(
     indices = list(range(1, total_obstacles + 1))
     random.shuffle(indices)
     idx = 0
-
+    
+    # 对于obstacles中的每一个障碍物o：
     for o, prop in zip(obstacles, proportions):
         sample_number = int(prop * num_points) + 500
         samples = o.sample_surface(sample_number)
