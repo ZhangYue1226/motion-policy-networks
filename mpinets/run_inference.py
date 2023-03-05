@@ -52,7 +52,7 @@ END_EFFECTOR_FRAME = "right_gripper"
 NUM_ROBOT_POINTS = 2048
 NUM_OBSTACLE_POINTS = 4096
 NUM_TARGET_POINTS = 128
-MAX_ROLLOUT_LENGTH = 150  # 这些数字根据什么定的？
+MAX_ROLLOUT_LENGTH = 150 
 
 
 # 从problem创建点云
@@ -110,15 +110,20 @@ def make_point_cloud_from_primitives(
     :rtype torch.Tensor: The pointcloud (dimensions 
                          [1 x NUM_ROBOT_POINTS + NUM_OBSTACLE_POINTS + NUM_TARGET_POINTS x 4])
     """
-    obstacle_points = construct_mixed_point_cloud(obstacles, NUM_OBSTACLE_POINTS)  # construct_mixed_point_cloud函数：从障碍物集合中创建一个随机点云。点云中的点应该根据障碍物的表面积平均地分布在障碍物之间。
-    robot_points = fk_sampler.sample(q0, NUM_ROBOT_POINTS)  # 用FrankaSampler在robot表面采样2048个点
-
+    # 采样obstacle，4096个点
+    # construct_mixed_point_cloud函数：从障碍物集合中创建一个随机点云。点云中的点应该根据障碍物的表面积平均地分布在障碍物之间。
+    obstacle_points = construct_mixed_point_cloud(obstacles, NUM_OBSTACLE_POINTS)  
+    
+    # 用FrankaSampler在robot表面采样2048个点
+    robot_points = fk_sampler.sample(q0, NUM_ROBOT_POINTS)  
+    
+    # 用FrankaSampler采样EE，128个点
     target_points = fk_sampler.sample_end_effector(
         torch.as_tensor(target.matrix).type_as(robot_points).unsqueeze(0),
         num_points=NUM_TARGET_POINTS,
-    )   # 用FrankaSampler采样EE，128个点
+    )   
 
-    # 定义一个变量叫xyz，初始化xyz为：1024*4的0张量，2048*4的1张量，。。。（在0维上concat，即张量上下排放）
+    # 定义一个变量叫xyz，初始化xyz为：2048*4的0张量，4096*4的1张量，2*128*4的1张量（在0维上concat，即张量上下排放）
     xyz = torch.cat(
         (
             torch.zeros(NUM_ROBOT_POINTS, 4),
@@ -151,7 +156,7 @@ def rollout_until_success(
     end effector is within 1cm and 15 degrees of the target. Gives up after 150 prediction
     steps.推理策略，直到满足成功标准。标准是末端执行器与目标的距离在1cm和15度以内。在150个预测步骤后放弃。
 
-    :param mdl MotionPolicyNetwork: The policy
+    :param mdl MotionPolicyNetwork: The policy #mdl即：MotionPolicyNetwork!!!!
     :param q0 np.ndarray: The starting configuration (dimension [7])
     :param target SE3: The target in the `right_gripper` frame
     :param point_cloud torch.Tensor: The point cloud to be fed into the model. Should have
@@ -175,10 +180,17 @@ def rollout_until_success(
         return fk_sampler.sample(config, NUM_ROBOT_POINTS)
 
     for i in range(MAX_ROLLOUT_LENGTH):
-        q_norm = torch.clamp(q_norm + mdl(point_cloud, q_norm), min=-1, max=1)
-        qt = unnormalize_franka_joints(q_norm) #将q_norm 去归一化，得到qt
+        # mdl即MotionPolicyNetwork，即policy（见上面有注释）。
+        # 将point_cloud和q_norm一起输入policy进行推理，得到的结果（即下一步的位移）+当前的位置，即为下一个位置（新的q_norm）。
+        # clamp函数用于判断变量大小是否在规定范围内。若新的q_norm在[-1,1]内，输出q_norm,若超出范围，超哪边就输出哪边那个极限范围值。
+        q_norm = torch.clamp(q_norm + mdl(point_cloud, q_norm), min=-1, max=1)  
+        
+        #将q_norm 去归一化，得到qt
+        qt = unnormalize_franka_joints(q_norm) 
+        # 判断qt形状是否合规
         assert isinstance(qt, torch.Tensor)
-        trajectory.append(qt)  # 向名叫trajectory的列表末端添加qt元素
+        # 向名叫trajectory的列表末端添加qt元素
+        trajectory.append(qt)  
         eff_pose = FrankaRobot.fk(
             qt.squeeze().detach().cpu().numpy(), eff_frame="right_gripper"
         )
@@ -210,8 +222,9 @@ def convert_primitive_problems_to_depth(problems: ProblemSet):
     print("Converting primitive problems to depth")
     sim = Bullet()
     franka = sim.load_robot(FrankaRobot)
-    # These are the camera views used for evaluations in Motion Policy Networks
-    # Count the problems
+    # These are the camera views used for evaluations in Motion Policy Networks   这些是用于Motion Policy Networks的evaluation的相机视图
+    
+    # Count the problems 
     total_problems = 0
     for scene_sets in problems.values():
         for problem_set in scene_sets.values():
@@ -276,6 +289,8 @@ def calculate_metrics(mdl_path: str, problems: List[PlanningProblem]):
         for problem_type, problem_set in scene_sets.items():
             eval.create_new_group(f"{scene_type}, {problem_type}")
             for problem in tqdm(problem_set, leave=False):
+                
+                #如果这个problem没有obstacle的点云，则从primitive创建点云（含采样obstacles，robot，target的点云）
                 if problem.obstacle_point_cloud is None:
                     point_cloud = make_point_cloud_from_primitives(
                         torch.as_tensor(problem.q0).unsqueeze(0),
@@ -283,6 +298,7 @@ def calculate_metrics(mdl_path: str, problems: List[PlanningProblem]):
                         problem.obstacles,
                         cpu_fk_sampler,
                     )
+                #如果这个problem有obstacle的点云，则从problem创建点云
                 else:
                     assert len(problem.obstacles) > 0
                     point_cloud = make_point_cloud_from_problem(
@@ -291,7 +307,10 @@ def calculate_metrics(mdl_path: str, problems: List[PlanningProblem]):
                         problem.obstacle_point_cloud,
                         cpu_fk_sampler,
                     )
+                    
                 start_time = time.time()
+                
+                # trajectory的定义
                 trajectory = rollout_until_success(
                     mdl,
                     problem.q0,
@@ -299,6 +318,8 @@ def calculate_metrics(mdl_path: str, problems: List[PlanningProblem]):
                     point_cloud.unsqueeze(0).cuda(),
                     gpu_fk_sampler,
                 )
+                
+                #评估轨迹
                 eval.evaluate_trajectory(
                     trajectory,
                     0.08,  # We assume the network is to operate at roughly 12hz
@@ -318,6 +339,7 @@ def calculate_metrics(mdl_path: str, problems: List[PlanningProblem]):
 def visualize_results(mdl_path: str, problems: ProblemSet):
     """
     Runs a sequence of problems and visualizes the results in Pybullet
+    在Pybullet中运行一系列问题并将结果可视化
 
     :param mdl_path str: The path to the model
     :param problems List[PlanningProblem]: A list of problems
