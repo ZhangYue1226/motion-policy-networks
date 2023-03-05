@@ -203,9 +203,12 @@ def rollout_until_success(
             < 15
         ):
             break
+        
+        #采样新位姿的robot，以点云形式采样。并更新至point_cloud里robot的部分。即：采样新的robot位姿，并更新point_cloud中robot那部分为新位姿的robot
         samples = sampler(qt).type_as(point_cloud)
         point_cloud[:, : samples.shape[1], :3] = samples
-
+    
+    # 返回trajectory里的每条轨迹
     return np.asarray([t.squeeze().detach().cpu().numpy() for t in trajectory])
 
 
