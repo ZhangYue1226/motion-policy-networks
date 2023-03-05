@@ -55,6 +55,7 @@ NUM_TARGET_POINTS = 128
 MAX_ROLLOUT_LENGTH = 150  # 这些数字根据什么定的？
 
 
+# 从problem创建点云
 def make_point_cloud_from_problem(
     q0: torch.Tensor,
     target: SE3,
@@ -90,7 +91,7 @@ def make_point_cloud_from_problem(
     ] = target_points.float()
     return xyz
 
-# 从原始食物产生点云
+# 从原始创建点云
 def make_point_cloud_from_primitives(
     q0: torch.Tensor,
     target: SE3,
@@ -105,17 +106,19 @@ def make_point_cloud_from_primitives(
     :param q0 torch.Tensor: The starting configuration (dimensions [1 x 7]) q0：开始的构型 1*7
     :param target SE3: The target pose in the `right_gripper` frame  目标姿态
     :param obstacles List[Union[Cuboid, Cylinder]]: The obstacles in the scene  场景中的障碍物
-    :param fk_sampler FrankaSampler: A sampler that produces points on the robot's surface
-    :rtype torch.Tensor: The pointcloud (dimensions
+    :param fk_sampler FrankaSampler: A sampler that produces points on the robot's surface   fk_sampler（即FrankaSampler）：在机器人表面产生点的采样器
+    :rtype torch.Tensor: The pointcloud (dimensions 
                          [1 x NUM_ROBOT_POINTS + NUM_OBSTACLE_POINTS + NUM_TARGET_POINTS x 4])
     """
-    obstacle_points = construct_mixed_point_cloud(obstacles, NUM_OBSTACLE_POINTS)
-    robot_points = fk_sampler.sample(q0, NUM_ROBOT_POINTS)
+    obstacle_points = construct_mixed_point_cloud(obstacles, NUM_OBSTACLE_POINTS)  # construct_mixed_point_cloud函数：从障碍物集合中创建一个随机点云。点云中的点应该根据障碍物的表面积平均地分布在障碍物之间。
+    robot_points = fk_sampler.sample(q0, NUM_ROBOT_POINTS)  # 用FrankaSampler在robot表面采样2048个点
 
     target_points = fk_sampler.sample_end_effector(
         torch.as_tensor(target.matrix).type_as(robot_points).unsqueeze(0),
         num_points=NUM_TARGET_POINTS,
-    )
+    )   # 用FrankaSampler采样EE，128个点
+
+    # 定义一个变量叫xyz，初始化xyz为：1024*4的0张量，2048*4的1张量，。。。（在0维上concat，即张量上下排放）
     xyz = torch.cat(
         (
             torch.zeros(NUM_ROBOT_POINTS, 4),
@@ -123,17 +126,17 @@ def make_point_cloud_from_primitives(
             2 * torch.ones(NUM_TARGET_POINTS, 4),
         ),
         dim=0,
-    )
-    xyz[:NUM_ROBOT_POINTS, :3] = robot_points.float()
+    ) 
+    xyz[:NUM_ROBOT_POINTS, :3] = robot_points.float()  # xyz的0~1023行的0-2列被赋值为上面采样robot所得的点
     xyz[
         NUM_ROBOT_POINTS : NUM_ROBOT_POINTS + NUM_OBSTACLE_POINTS,
         :3,
-    ] = torch.as_tensor(obstacle_points[:, :3]).float()
+    ] = torch.as_tensor(obstacle_points[:, :3]).float() # xyz的1024~（1024+2048）行的0-2列被赋值为上面采样obstacle所得的点
     xyz[
         NUM_ROBOT_POINTS + NUM_OBSTACLE_POINTS :,
         :3,
-    ] = target_points.float()
-    return xyz
+    ] = target_points.float()  # xyz的（1024+2048）~最后一行的0-2列被赋值为上面采样EE所得的点
+    return xyz  #返回赋值后的xyz （即代表采样所得的robot，obstacle，EE<target>的x,y,z坐标）
 
 
 def rollout_until_success(
@@ -146,7 +149,7 @@ def rollout_until_success(
     """
     Rolls out the policy until the success criteria are met. The criteria are that the
     end effector is within 1cm and 15 degrees of the target. Gives up after 150 prediction
-    steps.展开策略，直到满足成功标准。标准是末端执行器与目标的距离在1cm和15度以内。在150个预测步骤后放弃。
+    steps.推理策略，直到满足成功标准。标准是末端执行器与目标的距离在1cm和15度以内。在150个预测步骤后放弃。
 
     :param mdl MotionPolicyNetwork: The policy
     :param q0 np.ndarray: The starting configuration (dimension [7])
@@ -159,9 +162,10 @@ def rollout_until_success(
     :rtype np.ndarray: The trajectory
     """
     q = torch.as_tensor(q0).unsqueeze(0).float().cuda()
-    assert q.ndim == 2
+    assert q.ndim == 2  # assert：断言函数，若其条件成立，则无其他操作，直接向下进行。若条件不成立，则打印错误，终止程序。
+    
     # This block is to adapt for the case where we only want to roll out a
-    # single trajectory
+    # single trajectory  这个块是为了适应我们只想推理单一轨迹的情况
     trajectory = [q]
     q_norm = normalize_franka_joints(q)
     assert isinstance(q_norm, torch.Tensor)
@@ -172,9 +176,9 @@ def rollout_until_success(
 
     for i in range(MAX_ROLLOUT_LENGTH):
         q_norm = torch.clamp(q_norm + mdl(point_cloud, q_norm), min=-1, max=1)
-        qt = unnormalize_franka_joints(q_norm)
+        qt = unnormalize_franka_joints(q_norm) #将q_norm 去归一化，得到qt
         assert isinstance(qt, torch.Tensor)
-        trajectory.append(qt)
+        trajectory.append(qt)  # 向名叫trajectory的列表末端添加qt元素
         eff_pose = FrankaRobot.fk(
             qt.squeeze().detach().cpu().numpy(), eff_frame="right_gripper"
         )
