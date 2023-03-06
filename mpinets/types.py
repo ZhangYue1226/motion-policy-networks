@@ -35,6 +35,7 @@ Trajectory = Sequence[Union[Sequence, np.ndarray]]
 class PlanningProblem:
     """
     Defines a common interface to describe planning problems
+    定义一个公共接口来描述规划问题
     """
 
     target: SE3  # The target in the `right_gripper` frame
