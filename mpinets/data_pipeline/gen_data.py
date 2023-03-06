@@ -69,20 +69,22 @@ from mpinets.run_inference import PlanningProblem
 
 from typing import Tuple, List, Union, Sequence, Optional, Any
 
-# These are the current config parameters used throughout the script.
+# These are the current config parameters used throughout the script.  这些是整个脚本中使用的当前配置参数。
 PLANNED_PATH_LENGTH = 300  # An OMPL parameter for interpolations
 END_EFFECTOR_FRAME = "right_gripper"  # Used everywhere and is the default in robofin
-TERMINATION_RADIUS = 0.15  # Helpful for Lula because it struggles with convergence
+TERMINATION_RADIUS = 0.15  # Helpful for Lula because it struggles with convergence 有助于lula，因为它难于收敛
 SEQUENCE_LENGTH = 50  # The final sequence length
 NUM_SCENES = 6000  # The maximum number of scenes to generate in a single job
 NUM_PLANS_PER_SCENE = (
-    98  # The number of total candidate start or goals to use to plan experts
+    98  # The number of total candidate start or goals to use to plan experts 总候选人开始或目标的数量，用于计划专家
 )
-MAX_JERK = 0.15  # Used for validating the hybrid expert trajectories
+MAX_JERK = 0.15  # Used for validating the hybrid expert trajectories  用于混合专家轨迹的验证
 PIPELINE_TIMEOUT = 36000  # 10 hours in seconds--after which all new scenes will immediately return nothing
 
 # This parameter dictates the maximum number of cuboids to be used in an environment
 # Some environments have random generation methods and may generate outliers that are extremely complicated
+#该参数指定在一个环境中使用的长方体的最大数量
+#一些环境具有随机生成方法，可能会生成极其复杂的异常值
 CUBOID_CUTOFF = 40
 CYLINDER_CUTOFF = 40
 
@@ -198,6 +200,7 @@ def get_fabric_chunks(
     Runs geometric fabrics to follow the waypoints that came from `plan_end_effector`
     and produces a set of "mini trajectories" between waypoints (although it does not always
     to each waypoint)
+    运行几何织物来跟踪来自' plan_end_effector '的路径点，并在路径点之间产生一组“迷你轨迹”(尽管它并不总是到每个路径点)
 
     :param end_eff_plan List[SE3]: The end effector plan (i.e. the waypoints)
     :param q0 np.ndarray: The starting config
