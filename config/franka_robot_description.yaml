@@ -48,6 +48,7 @@ default_q: [
 # Most dimensions of the cspace have a direct corresponding element
 # in the URDF. This list of rules defines how unspecified coordinates
 # should be extracted.
+# cspace的大多数维度在URDF中都有一个直接对应的元素。这个规则列表定义了如何提取未指定的坐标。
 cspace_to_urdf_rules:
     - {name: panda_finger_joint1, rule: fixed, value: 0.025}
     - {name: panda_finger_joint2, rule: fixed, value: 0.025}
