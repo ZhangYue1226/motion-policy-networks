@@ -68,6 +68,7 @@ def make_point_cloud_from_problem(
         torch.as_tensor(target.matrix).type_as(robot_points).unsqueeze(0),
         num_points=NUM_TARGET_POINTS,
     )
+    # 2*torch.ones(NUM_TARGET_POINTS, 4)含义: 形状为NUM_TARGET_POINTS*4，元素均为2的张量
     xyz = torch.cat(
         (
             torch.zeros(NUM_ROBOT_POINTS, 4),
