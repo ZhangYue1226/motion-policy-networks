@@ -124,7 +124,8 @@ def make_point_cloud_from_primitives(
         num_points=NUM_TARGET_POINTS,
     )   
 
-    # 定义一个变量叫xyz，初始化xyz为：2048*4的0张量，4096*4的1张量，2*128*4的1张量（在0维上concat，即张量上下排放）
+    # 定义一个变量叫xyz，初始化xyz为：2048*4的0张量，4096*4的1张量，128*4的元素为2张量（在0维上concat，即张量按行堆叠，即上下排放）
+    # 2*torch.ones(NUM_TARGET_POINTS, 4)含义: 形状为NUM_TARGET_POINTS*4，元素均为2的张量
     xyz = torch.cat(
         (
             torch.zeros(NUM_ROBOT_POINTS, 4),
